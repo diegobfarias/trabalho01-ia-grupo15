@@ -1,3 +1,9 @@
+from collections import deque
+from queue import PriorityQueue
+import time
+
+OBJETIVO_FINAL = "12345678_"
+
 class Nodo:
     """
     Implemente a classe Nodo com os atributos descritos na funcao init
@@ -88,29 +94,23 @@ def expande(nodo):
     """
     # substituir a linha abaixo pelo seu codigo
     sucessores = sucessor(nodo.estado)
-    nodos = [Nodo(0,0,0,0) for i in sucessores]
-    k=0
-
-    for i in nodos:
-        (nodos[k]).estado = sucessores[k][1]
-        (nodos[k]).pai = nodo
-        (nodos[k]).acao = sucessores[k][0]
-        (nodos[k]).custo = (nodo.custo)+1
-        k=k+1
-        
+    nodos = []
+    for acao in sucessores:
+        nodos.append(Nodo(acao[1], nodo, acao[0], nodo.custo + 1))
     return nodos
 
-def percurso(nodo):
+def percurso_para_raiz(nodo):
     """
-    Receberá um nó e retornará o percurso do nó inicial até o objetivo
+    Receberá um nó e retornará o percurso do nó até raiz
     """
-    acoes = []
+    percurso = []
+    nodo_atual = nodo
 
-    while nodo.pai is not None:
-        acoes += [nodo.acao]
-        nodo = nodo.pai
+    while nodo_atual.pai:
+        percurso.insert(0, nodo_atual.acao)
+        nodo_atual = nodo_atual.pai
 
-    return acoes[::-1]
+    return percurso
 
 
 def bfs(estado):
@@ -122,22 +122,21 @@ def bfs(estado):
     :param estado: str
     :return:
     """
-    primeiroNodo = Nodo(estado,None,None,0)
-    explorados = []
-    fronteira = [primeiroNodo]
-    visitado = []
+    explorados = set()
+    fronteira = deque([Nodo(estado, None, None, 0)])
+
     while True:
-        if fronteira == []:
-            visitado = fronteira.pop(0)
-            fronteira.pop(0)
-        if visitado.estado == "12345678_":
-            return "abaxate"
-        if visitado.estado not in explorados
-            explorados.append(v)
-            vizinhos = expande(visitado)
-            fronteira.extend(vizinhos)
-            
-    raise NotImplementedError
+        if not fronteira:
+            return None
+
+        estado_corrente = fronteira.popleft()
+
+        if estado_corrente.estado == OBJETIVO_FINAL:
+            return percurso_para_raiz(estado_corrente)
+        elif estado_corrente not in explorados:
+            explorados.add(estado_corrente)
+            for no_filho in expande(estado_corrente):
+                fronteira.append(no_filho)
 
 
 def dfs(estado):
@@ -150,27 +149,28 @@ def dfs(estado):
     :return:
     """
     # substituir a linha abaixo pelo seu codigo
-    fronteira = []
-    visitados = set([])
-    raiz = Nodo(estado, None, None, 0)
-    k = raiz
+    explorados = set()
+    fronteira = [Nodo(estado, None, None, 0)]
 
-    fronteira.append(raiz)
+    while True:
+        if not fronteira:
+            return None
 
-    while fronteira:
-        k = fronteira.pop()
-        if k.estado in visitados:
-            continue
-        if k.estado == OBJETIVO_FINAL:
-            break
-        fronteira.extend(expande(k))
-        visitados.add(k.estado)
+        estado_corrente = fronteira.pop()
 
-    if k.estado != OBJETIVO_FINAL:
-        return None
+        if estado_corrente.estado == OBJETIVO_FINAL:
+            return percurso_para_raiz(estado_corrente)
+        elif estado_corrente not in explorados:
+            explorados.add(estado_corrente)
+            for no_filho in expande(estado_corrente):
+                fronteira.append(no_filho)
 
-    return percurso(k)
-
+def h_hamming(estado):
+    """
+    A partir de um estado, calcula a distância de Hamming entre ele e o
+    estado de objetivo final. Retorna a quantidade de peças que estão fora do lugar
+    """
+    return sum([1 for qnt1, qnt2 in zip(OBJETIVO_FINAL, estado) if qnt1 != qnt2])
 
 def astar_hamming(estado):
     """
@@ -182,10 +182,21 @@ def astar_hamming(estado):
     :return:
     """
     # substituir a linha abaixo pelo seu codigo
+    explorados = set()
     fronteira = []
-    visitados = set()
 
-    heappush(fronteira, ())
+    heappush(fronteira, (h_hamming(estado), Nodo(estado, pai=None, acao="", custo=0)))
+
+    while True:
+        if len(fronteira) == 0:
+            return None
+        estado_corrente = heappop(fronteira)
+        if estado_corrente[1].estado == OBJETIVO_FINAL:
+            return percurso_para_raiz(estado_corrente[1])
+        if estado_corrente[1].estado not in explorados:
+            explorados.add(estado_corrente[1].estado)
+            for vizinho in expande(estado_corrente[1]):
+                heappush(fronteira, (vizinho.custo + h_hamming(vizinho.estado), vizinho))
 
 
 def astar_manhattan(estado):
